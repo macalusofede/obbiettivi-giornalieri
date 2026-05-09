@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sfida 0 Euro - Tracker</title>
+    
+    <!-- Link al CSS esterno -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- PWA & Icone -->
+    <link rel="icon" type="image/png" href="icona.png">
+    <link rel="apple-touch-icon" href="icona.png">
+    <link rel="manifest" href="data:application/manifest+json,{'name':'Sfida 0 Euro','short_name':'Sfida0','start_url':'.','display':'standalone','background_color':'#121212','theme_color':'#3498db','icons':[{'src':'icona.png','sizes':'512x512','type':'image/png'}]}" />
+</head>
+<body>
+
+<div class="app-container">
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span>Totale Sfide</span>
+            <b id="stat-totale">0</b>
+        </div>
+        <div class="stat-item">
+            <span>Oggi</span>
+            <b id="stat-oggi">0</b>
+        </div>
+    </div>
+
+    <h1>🚀 Missione</h1>
+    <div id="box-sfida">Pronto per una nuova sfida?</div>
+
+    <button id="btn-genera">Genera Nuova Sfida</button>
+    <button id="btn-fatto" class="btn-success" style="display: none;">Segna come Completata!</button>
+
+    <div class="calendar-section">
+        <h3>📅 Registro Attività</h3>
+        <div id="registro-calendario">
+            <!-- Riempito da JavaScript -->
+        </div>
+    </div>
+</div>
+
+    <!-- Link al JS esterno -->
+    <script src="script.js"></script>
+</body>
+</html>

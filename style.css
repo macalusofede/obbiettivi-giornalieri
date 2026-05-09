@@ -1,0 +1,103 @@
+:root {
+    --bg: #121212;
+    --card: #1e1e1e;
+    --primary: #3498db;
+    --success: #2ecc71;
+    --text: #ffffff;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 400px;
+    background: var(--card);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    text-align: center;
+    border: 1px solid #333;
+}
+
+.stats-bar {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+    background: #252525;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.stat-item span { 
+    display: block; 
+    font-size: 0.8rem; 
+    color: #bbb; 
+}
+
+.stat-item b { 
+    font-size: 1.2rem; 
+    color: var(--primary); 
+}
+
+#box-sfida {
+    font-size: 1.3rem;
+    margin: 30px 0;
+    min-height: 60px;
+    font-weight: bold;
+    color: #f1c40f;
+}
+
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 50px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 10px;
+    transition: transform 0.2s;
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+.btn-success { 
+    background: var(--success); 
+}
+
+.calendar-section {
+    margin-top: 30px;
+    text-align: left;
+    width: 100%;
+}
+
+.day-group {
+    margin-bottom: 15px;
+    border-left: 3px solid var(--primary);
+    padding-left: 10px;
+}
+
+.day-title { 
+    font-size: 0.9rem; 
+    color: var(--primary); 
+    margin-bottom: 5px; 
+    font-weight: bold;
+}
+
+.completed-task { 
+    font-size: 0.85rem; 
+    color: #ddd; 
+    margin: 3px 0; 
+}
