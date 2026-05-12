@@ -178,5 +178,3 @@ window.avviaSudoku = () => {
 };
 
 updateUI();
-
-updateUI();
