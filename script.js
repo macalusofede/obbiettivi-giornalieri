@@ -8,170 +8,175 @@ const sfidePool = [
     "Niente telefono al lavoro 📵", "Butta 5 oggetti 🗑️"
 ];
 
-const DB_KEY = "db_sfide_streak_v11";
-const STREAK_KEY = "streak_vittorie_v11";
-const CAMBI_KEY = "cambi_giornalieri_v11";
-const SETTIMANA_KEY = "ultima_settimana_salvata_v11";
+const giorni = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
 
-let database = JSON.parse(localStorage.getItem(DB_KEY)) || {};
-let sfideAttive = JSON.parse(localStorage.getItem("attive_sfide_v11")) || [];
-let streakVittorie = parseInt(localStorage.getItem(STREAK_KEY)) || 0;
-let sfideScartateOggi = []; // Memoria temporanea per i cambi della sessione
+let state = {
+    totale: parseInt(localStorage.getItem("pro_vF_tot")) || 0,
+    streak: parseInt(localStorage.getItem("pro_vF_str")) || 0,
+    attive: JSON.parse(localStorage.getItem("pro_vF_att")) || [],
+    usateOggi: JSON.parse(localStorage.getItem("pro_vF_usa")) || [], // Sfide già uscite/scartate/finite
+    cambiEffettuati: 0
+};
 
-function getDataKey() { return new Date().toISOString().split('T')[0]; }
-
-function getWeekNumber(d) {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+function updateUI() {
+    document.getElementById("stat-totale").innerText = state.totale;
+    document.getElementById("stat-streak").innerText = state.streak + " 🔥";
+    localStorage.setItem("pro_vF_tot", state.totale);
+    localStorage.setItem("pro_vF_str", state.streak);
+    localStorage.setItem("pro_vF_att", JSON.stringify(state.attive));
+    localStorage.setItem("pro_vF_usa", JSON.stringify(state.usateOggi));
+    renderAttive();
 }
 
-function controllaResetSettimanale() {
-    const settimanaCorrente = getWeekNumber(new Date());
-    const ultimaSettimana = localStorage.getItem(SETTIMANA_KEY);
-    if (ultimaSettimana && ultimaSettimana != settimanaCorrente) {
-        ['lun','mar','mer','gio','ven','sab','dom'].forEach(g => {
-            localStorage.removeItem(`agenda_v9_${g}`);
-        });
+// Agenda Init
+const settContainer = document.getElementById("settimana-container");
+giorni.forEach(g => {
+    const box = document.createElement("div"); box.className = "giorno-box";
+    const saved = localStorage.getItem("agenda_vF_" + g) || "";
+    box.innerHTML = `<label>${g}</label><textarea id="input-${g}">${saved}</textarea>`;
+    settContainer.appendChild(box);
+    const txt = box.querySelector("textarea");
+    txt.oninput = () => localStorage.setItem("agenda_vF_" + g, txt.value);
+});
+
+// Generazione con Filtro Totale
+function generaSfida() {
+    const display = document.getElementById("box-sfida");
+    const btnCambia = document.getElementById("btn-cambia");
+    const btnGenera = document.getElementById("btn-genera");
+
+    // Filtra le sfide disponibili (non attive e non usate oggi)
+    const disponibili = sfidePool.filter(s => !state.attive.includes(s) && !state.usateOggi.includes(s));
+
+    if (disponibili.length === 0) {
+        display.innerText = "Hai finito tutte le sfide per oggi! 🏆";
+        document.getElementById("controlli-generazione").classList.remove("hidden");
+        document.getElementById("azioni-sfida").classList.add("hidden");
+        btnGenera.disabled = true;
+        btnGenera.innerText = "COMPLETATO";
+        return;
     }
-    localStorage.setItem(SETTIMANA_KEY, settimanaCorrente);
-}
 
-let datiCambi = JSON.parse(localStorage.getItem(CAMBI_KEY)) || { data: "", conteggio: 3 };
-if (datiCambi.data !== getDataKey()) {
-    datiCambi = { data: getDataKey(), conteggio: 3 };
-    localStorage.setItem(CAMBI_KEY, JSON.stringify(datiCambi));
-    sfideScartateOggi = []; 
-}
-
-const displaySfida = document.getElementById("box-sfida");
-const btnGenera = document.getElementById("btn-genera");
-const divAzioni = document.getElementById("azioni-sfida");
-const btnCambia = document.getElementById("btn-cambia");
-let sfidaProposta = "";
-
-function genera(isCambio = false) {
-    if (isCambio) {
-        if (datiCambi.conteggio <= 0) {
-            alert("Cambi esauriti!");
-            return;
+    display.classList.add("loading");
+    let giri = 0;
+    const interval = setInterval(() => {
+        display.innerText = disponibili[Math.floor(Math.random() * disponibili.length)];
+        giri++;
+        if (giri > 10) {
+            clearInterval(interval);
+            display.classList.remove("loading");
+            
+            const rimasti = 3 - state.cambiEffettuati;
+            btnCambia.innerHTML = `CAMBIA 🔄 <span id="cambi-rimasti">Rimasti: ${rimasti}</span>`;
+            if (state.cambiEffettuati >= 3) {
+                btnCambia.disabled = true;
+                btnCambia.innerHTML = "CAMBI FINITI 🚫";
+            }
         }
-        // Aggiungi la sfida attuale tra quelle scartate prima di generarne una nuova
-        if (sfidaProposta) sfideScartateOggi.push(sfidaProposta);
-        
-        datiCambi.conteggio--;
-        localStorage.setItem(CAMBI_KEY, JSON.stringify(datiCambi));
-    }
-
-    const oggi = getDataKey();
-    const giaFatte = (database[oggi] || []).map(s => s.testo);
-    
-    // Filtro: NO già fatte oggi, NO già attive, NO scartate in questa sessione
-    const disponibili = sfidePool.filter(s => 
-        !giaFatte.includes(s) && 
-        !sfideAttive.includes(s) && 
-        !sfideScartateOggi.includes(s) &&
-        s !== sfidaProposta
-    );
-    
-    if (disponibili.length === 0) { 
-        displaySfida.innerText = "Nessun'altra sfida disponibile!"; 
-        btnCambia.classList.add("hidden");
-        return; 
-    }
-    
-    sfidaProposta = disponibili[Math.floor(Math.random() * disponibili.length)];
-    displaySfida.innerText = `${sfidaProposta}\n(Cambi rimasti: ${datiCambi.conteggio})`;
-    
-    btnGenera.classList.add("hidden");
-    divAzioni.classList.remove("hidden");
-
-    if (datiCambi.conteggio <= 0) {
-        btnCambia.style.opacity = "0.4";
-        btnCambia.innerText = "Cambi Esauriti";
-    }
+    }, 60);
 }
 
-btnGenera.onclick = () => genera(false);
-btnCambia.onclick = () => genera(true);
+document.getElementById("btn-genera").onclick = () => {
+    state.cambiEffettuati = 0;
+    document.getElementById("btn-cambia").disabled = false;
+    document.getElementById("controlli-generazione").classList.add("hidden");
+    document.getElementById("azioni-sfida").classList.remove("hidden");
+    generaSfida();
+};
+
+document.getElementById("btn-cambia").onclick = () => {
+    if (state.cambiEffettuati < 3) {
+        // Quando cambi, la sfida mostrata viene segnata come "usata"
+        state.usateOggi.push(document.getElementById("box-sfida").innerText);
+        state.cambiEffettuati++;
+        generaSfida();
+        updateUI();
+    }
+};
 
 document.getElementById("btn-accetta").onclick = () => {
-    sfideAttive.push(sfidaProposta);
-    localStorage.setItem("attive_sfide_v11", JSON.stringify(sfideAttive));
-    renderAttive();
-    btnGenera.classList.remove("hidden");
-    divAzioni.classList.add("hidden");
-    displaySfida.innerText = "Sfida Accettata! Vai!";
-    sfidaProposta = ""; // Reset proposta
+    const sfidaCorrente = document.getElementById("box-sfida").innerText;
+    state.attive.push(sfidaCorrente);
+    state.usateOggi.push(sfidaCorrente); // Segnata come usata così non riappare
+    document.getElementById("controlli-generazione").classList.remove("hidden");
+    document.getElementById("azioni-sfida").classList.add("hidden");
+    document.getElementById("box-sfida").innerText = "Sfida Accettata!";
+    updateUI();
 };
 
 function renderAttive() {
-    const lista = document.getElementById("lista-sfide-attive");
-    lista.innerHTML = "";
-    sfideAttive.forEach((t, i) => {
-        const div = document.createElement("div");
-        div.className = "sfida-attiva-card";
-        div.innerHTML = `<b>${t}</b><div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-success" onclick="finisci(${i}, true)">VINTA</button>
-            <button class="btn-danger" onclick="finisci(${i}, false)">PERSA</button>
+    const list = document.getElementById("lista-sfide-attive");
+    list.innerHTML = "";
+    state.attive.forEach((s, i) => {
+        const d = document.createElement("div");
+        d.className = "sfida-item";
+        d.innerHTML = `<div style="padding:15px; background:#1e293b; border-radius:15px; margin-bottom:10px; border-left: 4px solid var(--accent)">
+            <span>${s}</span>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="btn-action ok" onclick="vinta(${i})" style="flex:2">VINTA</button>
+                <button class="btn-action" onclick="persa(${i})" style="background:var(--danger); flex:1">X</button>
+            </div>
         </div>`;
-        lista.appendChild(div);
+        list.appendChild(d);
     });
 }
 
-window.finisci = (i, esito) => {
-    const oggi = getDataKey();
-    if(!database[oggi]) database[oggi] = [];
-    database[oggi].push({testo: sfideAttive[i], vinto: esito});
-
-    if (esito === true) { streakVittorie++; } 
-    else { streakVittorie = 0; }
-
-    sfideAttive.splice(i, 1);
-    localStorage.setItem(DB_KEY, JSON.stringify(database));
-    localStorage.setItem("attive_sfide_v11", JSON.stringify(sfideAttive));
-    localStorage.setItem(STREAK_KEY, streakVittorie.toString());
-    renderAttive();
-    aggiornaStats();
+window.vinta = (i) => {
+    state.attive.splice(i, 1);
+    state.totale++; state.streak++;
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    updateUI();
 };
 
-function aggiornaStats() {
-    let tot = 0;
-    Object.values(database).forEach(g => tot += g.filter(s => s.vinto).length);
-    const oggiVinte = (database[getDataKey()] || []).filter(s => s.vinto).length;
-    document.getElementById("stat-totale").innerText = tot;
-    document.getElementById("stat-oggi").innerText = oggiVinte;
-    document.getElementById("stat-streak").innerText = streakVittorie + " 🔥";
-}
+window.persa = (i) => {
+    state.attive.splice(i, 1);
+    state.streak = 0;
+    updateUI();
+};
 
-document.getElementById("btn-apri-cronologia").onclick = () => {
-    const c = document.getElementById("calendario-dettagliato");
-    c.innerHTML = "";
-    const chiavi = Object.keys(database).sort().reverse();
-    if(chiavi.length === 0) c.innerHTML = "<p>Nessuna sfida completata.</p>";
-    chiavi.forEach(d => {
-        let h = `<div class="day-card"><b>${d}</b>`;
-        database[d].forEach(s => h += `<div>${s.vinto?'✅':'❌'} ${s.testo}</div>`);
-        c.innerHTML += h + "</div>";
+// Reset quotidiano (Opzionale: svuota le sfide usate se è un nuovo giorno)
+// Per ora le sfide usate rimangono salvate finché non pulisci la cache, 
+// così il gioco è coerente con la tua richiesta.
+
+window.apriOverlay = (id) => { document.getElementById(id).style.display = "block"; document.body.style.overflow = "hidden"; };
+window.chiudiOverlay = () => { document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none'); document.body.style.overflow = "auto"; };
+window.resetEChiudi = () => { chiudiOverlay(); document.getElementById("game-feedback").innerHTML = ""; document.getElementById("sudoku-controls").classList.add("hidden"); };
+
+// Giochi
+window.avviaMemory = () => {
+    chiudiOverlay(); apriOverlay('overlay-game-screen');
+    const cont = document.getElementById("game-container");
+    const secret = Math.floor(100000 + Math.random() * 900000);
+    cont.innerHTML = `<h2>Ricorda:</h2><h1 style="font-size:3.5rem; color:var(--accent)">${secret}</h1>`;
+    setTimeout(() => {
+        cont.innerHTML = `<h2>Inserisci il numero:</h2>
+            <input type="number" id="m-in" style="width:100%; padding:15px; font-size:2rem; text-align:center; background:#0f172a; color:#fff; border:2px solid var(--accent); border-radius:15px;">
+            <button onclick="checkM(${secret})" class="btn-main" style="margin-top:15px">VERIFICA</button>`;
+    }, 2500);
+};
+
+window.checkM = (s) => {
+    const val = document.getElementById("m-in").value;
+    const f = document.getElementById("game-feedback");
+    if(val == s) { f.innerHTML = "<h2>ESATTO!</h2>"; confetti(); } else { f.innerHTML = `<h2>ERRORE! Era ${s}</h2>`; }
+    setTimeout(resetEChiudi, 2500);
+};
+
+window.avviaSudoku = () => {
+    chiudiOverlay(); apriOverlay('overlay-game-screen');
+    document.getElementById("sudoku-controls").classList.remove("hidden");
+    const cont = document.getElementById("game-container");
+    cont.innerHTML = `<h2>Sudoku</h2><div class="sudoku-grid" id="grid"></div>`;
+    const grid = document.getElementById("grid");
+    const puzzle = [5,3,0,0,7,0,0,0,0, 6,0,0,1,9,5,0,0,0, 0,9,8,0,0,0,0,6,0, 8,0,0,0,6,0,0,0,3, 4,0,0,8,0,3,0,0,1, 7,0,0,0,2,0,0,0,6, 0,6,0,0,0,0,2,8,0, 0,0,0,4,1,9,0,0,5, 0,0,0,0,8,0,0,7,9];
+    puzzle.forEach((n, i) => {
+        const c = document.createElement("div"); c.className = "s-cell" + (n !== 0 ? " fixed" : "");
+        c.innerText = n !== 0 ? n : "";
+        if(n === 0) c.onclick = () => { document.querySelectorAll('.s-cell').forEach(el => el.classList.remove('selected')); c.classList.add('selected'); };
+        grid.appendChild(c);
     });
-    document.getElementById("overlay-cronologia").style.display = "block";
-};
-document.getElementById("btn-chiudi-cronologia").onclick = () => document.getElementById("overlay-cronologia").style.display = "none";
-
-document.getElementById("btn-apri-agenda").onclick = () => {
-    ['lun','mar','mer','gio','ven','sab','dom'].forEach(g => {
-        document.getElementById(`note-${g}`).value = localStorage.getItem(`agenda_v9_${g}`) || "";
-    });
-    document.getElementById("overlay-agenda").style.display = "block";
-};
-document.getElementById("btn-chiudi-agenda").onclick = () => {
-    ['lun','mar','mer','gio','ven','sab','dom'].forEach(g => {
-        localStorage.setItem(`agenda_v9_${g}`, document.getElementById(`note-${g}`).value);
-    });
-    document.getElementById("overlay-agenda").style.display = "none";
 };
 
-controllaResetSettimanale();
-renderAttive();
-aggiornaStats();
+updateUI();
+
+updateUI();

@@ -2,56 +2,80 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sfide Giornaliere</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sfide & Giochi Pro</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
-<div class="app-container">
-    <div class="stats-bar">
-        <div class="stat-item"><span>Totale</span><b id="stat-totale">0</b></div>
-        <div class="stat-item"><span>Oggi</span><b id="stat-oggi">0</b></div>
-        <div class="stat-item"><span>Streak</span><b id="stat-streak">0 🔥</b></div>
-        <button id="btn-apri-cronologia" class="btn-icon">📅</button>
-    </div>
-    <h1>Sfide Giornaliere</h1>
-    <div class="generatore-box">
-        <div id="box-sfida">Pronto a vincere?</div>
-        <button id="btn-genera">Genera Sfida</button>
-        <div id="azioni-sfida" class="hidden">
-            <button id="btn-accetta" class="btn-primary">Accetta Sfida ✅</button>
-            <button id="btn-cambia" class="btn-secondary" id="btn-cambia">Cambia 🔄</button>
+    <div class="app-container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>VINTE</span>
+                <b id="stat-totale">0</b>
+            </div>
+            <div class="stat-card">
+                <span>STREAK</span>
+                <b id="stat-streak">0 🔥</b>
+            </div>
+        </div>
+
+        <div class="main-card">
+            <h1>Daily Challenge</h1>
+            <div id="box-sfida" class="sfida-display">Pronto per una nuova sfida?</div>
+            <div id="controlli-generazione">
+                <button id="btn-genera" class="btn-main">GENERA SFIDA</button>
+            </div>
+            <div id="azioni-sfida" class="hidden">
+                <div class="btn-group">
+                    <button id="btn-accetta" class="btn-action ok">ACCETTA ✅</button>
+                    <button id="btn-cambia" class="btn-action swap">CAMBIA 🔄</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-grid">
+            <button onclick="apriOverlay('overlay-giochi')" class="btn-menu">🧠 GIOCHI</button>
+            <button onclick="apriOverlay('overlay-agenda')" class="btn-menu">📅 AGENDA</button>
+        </div>
+
+        <div class="active-section">
+            <h3 class="section-title">SFIDE IN CORSO</h3>
+            <div id="lista-sfide-attive"></div>
         </div>
     </div>
-    <button id="btn-apri-agenda" class="btn-agenda">📝 AGENDA SETTIMANALE</button>
-    <div id="sezione-attive">
-        <h3>SFIDE IN CORSO</h3>
-        <div id="lista-sfide-attive"></div>
-    </div>
-</div>
 
-<div id="overlay-agenda" class="overlay">
-    <div class="overlay-content">
-        <div class="header-overlay"><h2>📅 Agenda</h2><button id="btn-chiudi-agenda" class="btn-danger">SALVA</button></div>
-        <div class="scroll-agenda">
-            <div class="giorno-box"><span>Lunedì</span><textarea id="note-lun"></textarea></div>
-            <div class="giorno-box"><span>Martedì</span><textarea id="note-mar"></textarea></div>
-            <div class="giorno-box"><span>Mercoledì</span><textarea id="note-mer"></textarea></div>
-            <div class="giorno-box"><span>Giovedì</span><textarea id="note-gio"></textarea></div>
-            <div class="giorno-box"><span>Venerdì</span><textarea id="note-ven"></textarea></div>
-            <div class="giorno-box"><span>Sabato</span><textarea id="note-sab"></textarea></div>
-            <div class="giorno-box"><span>Domenica</span><textarea id="note-dom"></textarea></div>
+    <!-- Overlay Giochi -->
+    <div id="overlay-giochi" class="overlay">
+        <div class="overlay-content">
+            <h2 class="overlay-title">Mental Gym</h2>
+            <button onclick="avviaMemory()" class="btn-opt">🧩 Memory Numbers</button>
+            <button onclick="avviaSudoku()" class="btn-opt">🔢 Sudoku Mini</button>
+            <button onclick="chiudiOverlay()" class="btn-close">TORNA INDIETRO</button>
         </div>
     </div>
-</div>
 
-<div id="overlay-cronologia" class="overlay">
-    <div class="overlay-content">
-        <div class="header-overlay"><h2>Cronologia</h2><button id="btn-chiudi-cronologia" class="btn-danger">✖</button></div>
-        <div id="calendario-dettagliato"></div>
+    <!-- Overlay Gioco Attivo -->
+    <div id="overlay-game-screen" class="overlay">
+        <div class="overlay-content">
+            <div id="game-container"></div>
+            <div id="game-feedback"></div>
+            <div id="sudoku-controls" class="hidden">
+                <button onclick="verificaSudoku()" class="btn-action ok" style="margin-top:20px; width:100%">VERIFICA</button>
+            </div>
+            <button onclick="resetEChiudi()" class="btn-close" style="margin-top:40px;">ESCI</button>
+        </div>
     </div>
-</div>
 
-<script src="script.js"></script>
+    <!-- Overlay Agenda -->
+    <div id="overlay-agenda" class="overlay">
+        <div class="overlay-content">
+            <h2 class="overlay-title">Agenda Settimanale</h2>
+            <div id="settimana-container"></div>
+            <button onclick="chiudiOverlay()" class="btn-close">CHIUDI</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
