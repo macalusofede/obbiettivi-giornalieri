@@ -10,8 +10,11 @@
     <div id="splash-screen">
         <img src="icona.png" alt="Logo" class="splash-logo">
     </div>
-
     <div class="app-container">
+        <div class="app-header">
+            <h1 class="app-title">⚡ Sfide Pro</h1>
+            <button id="btn-premium-badge" onclick="apriOverlay('overlay-premium')" class="premium-badge">STANDARD</button>
+        </div>
         <div class="stats-grid">
             <div class="stat-card">
                 <span>VINTE</span>
@@ -22,15 +25,21 @@
                 <b id="stat-streak">0 🔥</b>
             </div>
         </div>
-
+        <div class="main-card level-card">
+            <div class="level-header">
+                <span class="level-badge-text">LIVELLO <b class="livello-num">1</b></span>
+                <span class="level-xp-text">0 / 100 XP</span>
+            </div>
+            <div class="level-bar-bg"><div class="level-bar-fill" style="width:0%"></div></div>
+        </div>
         <div class="main-card chart-section">
             <h3 class="chart-title">PROGRESSI SETTIMANALI</h3>
             <div class="chart-container" id="settimana-chart">
                 </div>
         </div>
-
         <div class="main-card">
-            <h1>Daily Challenge</h1>
+            <h2 style="margin: 0 0 5px 0; font-size: 1.1rem; color: #94a3b8;">Daily Challenge</h2>
+            <p id="sfide-counter" class="sfide-counter"></p>
             <div id="box-sfida" class="sfida-display">Pronto per una nuova sfida?</div>
             
             <div id="controlli-generazione">
@@ -44,38 +53,57 @@
                 </div>
             </div>
         </div>
-
         <div class="menu-grid">
             <button onclick="apriOverlay('overlay-giochi')" class="btn-menu">🧠 GIOCHI</button>
             <button onclick="apriOverlay('overlay-agenda')" class="btn-menu">📅 AGENDA</button>
+            <button onclick="apriOverlay('overlay-traguardi')" class="btn-menu">🏆 TRAGUARDI</button>
         </div>
-
         <div class="active-section">
             <h3 class="section-title">SFIDE IN CORSO</h3>
             <div id="lista-sfide-attive"></div>
         </div>
     </div>
-
     <div id="overlay-giochi" class="overlay">
         <div class="overlay-content">
             <h2 class="overlay-title">Mental Gym</h2>
             <button onclick="avviaMemory()" class="btn-opt">🧩 Memory Numbers</button>
             <button onclick="avviaSudoku()" class="btn-opt">🔢 Sudoku Mini</button>
+            <button onclick="avviaRiflessi()" class="btn-opt" style="border-left-color: #f59e0b;">⚡ Test Riflessi</button>
+            <button onclick="avviaMath()" class="btn-opt" style="border-left-color: #ec4899;">🧮 Calcolo Rapido</button>
+            <button onclick="avviaImpiccato()" class="btn-opt btn-premium-game" style="border-left-color: #22c55e;">
+                <span>🔤 Impiccato</span><span class="game-counter-tag" id="impiccato-counter">5/5 oggi</span>
+            </button>
+            <button onclick="avviaMemoryCarte()" class="btn-opt btn-premium-game" style="border-left-color: #22c55e;">
+                <span>🃏 Memory Carte</span><span class="game-counter-tag" id="memcarte-counter">5/5 oggi</span>
+            </button>
+            <button onclick="avviaTexting()" class="btn-opt btn-premium-game" style="border-left-color: #22c55e;">
+                <span>⌨️ Digita Veloce</span><span class="game-counter-tag" id="texting-counter">10/10 oggi</span>
+            </button>
+            <button onclick="handlePremiumGame('avviaSimon')" class="btn-opt btn-premium-game" style="border-left-color: #a855f7;">
+                <span>🎨 Simon Colori</span><span class="premium-tag">⭐ PREMIUM</span>
+            </button>
+            <button onclick="handlePremiumGame('avviaAnagramma')" class="btn-opt btn-premium-game" style="border-left-color: #a855f7;">
+                <span>🔤 Anagramma Lampo</span><span class="premium-tag">⭐ PREMIUM</span>
+            </button>
+            <button onclick="handlePremiumGame('avvia2048')" class="btn-opt btn-premium-game" style="border-left-color: #a855f7;">
+                <span>🔢 2048</span><span class="premium-tag">⭐ PREMIUM</span>
+            </button>
+            <button onclick="handlePremiumGame('avviaSnake')" class="btn-opt btn-premium-game" style="border-left-color: #a855f7;">
+                <span>🐍 Snake</span><span class="premium-tag">⭐ PREMIUM</span>
+            </button>
             <button onclick="chiudiOverlay()" class="btn-close">TORNA INDIETRO</button>
         </div>
     </div>
-
     <div id="overlay-game-screen" class="overlay">
         <div class="overlay-content">
             <div id="game-container"></div>
             <div id="game-feedback"></div>
             <div id="sudoku-controls" class="hidden">
-                <button onclick="verificaSudoku()" class="btn-action ok" style="margin-top:20px; width:100%">VERIFICA</button>
+                <button onclick="verificaSudoku()" class="btn-action ok" style="margin-top:15px; width:100%">VERIFICA</button>
             </div>
-            <button onclick="resetEChiudi()" class="btn-close" style="margin-top:40px;">ESCI</button>
+            <button onclick="resetEChiudi()" class="btn-close" style="margin-top:25px;">ESCI</button>
         </div>
     </div>
-
     <div id="overlay-agenda" class="overlay">
         <div class="overlay-content">
             <h2 class="overlay-title">Agenda Settimanale</h2>
@@ -83,7 +111,30 @@
             <button onclick="chiudiOverlay()" class="btn-close">CHIUDI</button>
         </div>
     </div>
-
+    <div id="overlay-traguardi" class="overlay">
+        <div class="overlay-content">
+            <h2 class="overlay-title">🏆 Traguardi</h2>
+            <div class="main-card level-card" style="margin-bottom:20px;">
+                <div class="level-header">
+                    <span class="level-badge-text">LIVELLO <b class="livello-num">1</b></span>
+                    <span class="level-xp-text">0 / 100 XP</span>
+                </div>
+                <div class="level-bar-bg"><div class="level-bar-fill" style="width:0%"></div></div>
+            </div>
+            <div id="achievements-list"></div>
+            <h3 class="section-title" style="margin-top:20px;">🎯 OBIETTIVI SPECIALI</h3>
+            <p style="color:#64748b; font-size:0.7rem; margin:0 0 10px 0;">Se ne sblocca uno casuale ogni 5 livelli</p>
+            <div id="obiettivi-list"></div>
+            <button onclick="chiudiOverlay()" class="btn-close">CHIUDI</button>
+        </div>
+    </div>
+    <div id="overlay-premium" class="overlay">
+        <div class="overlay-content">
+            <h2 class="overlay-title">⭐ Sfide Pro Premium</h2>
+            <div id="premium-content"></div>
+            <button onclick="chiudiOverlay()" class="btn-close">CHIUDI</button>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
