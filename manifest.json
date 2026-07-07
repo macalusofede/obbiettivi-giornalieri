@@ -1,0 +1,13 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Mind Quest",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Mind Quest",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "description": "L'applicazione ideale per allenare la tua mente e migliorare le tue abitudini quotidiane. Ogni giorno una nuova sfida ti aspetta per aiutarti a mantenere alta la concentrazione e la motivazione. Tieni traccia dei tuoi successi, sblocca obiettivi unici e trasforma la tua routine in un percorso di crescita.",
+  "id": "Macas"
+}
