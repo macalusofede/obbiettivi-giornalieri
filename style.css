@@ -59,8 +59,8 @@ button:disabled { background: #334155 !important; opacity: 0.6; cursor: not-allo
 .btn-action.ok { background: var(--success); }
 .btn-action.swap { background: #475569; }
 
-.menu-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-.btn-menu { padding: 12px 4px; background: var(--card); border-bottom: 2px solid var(--accent); font-size: 0.72rem; }
+.menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+.btn-menu { padding: 12px 4px; background: var(--card); border-bottom: 2px solid var(--accent); font-size: 0.8rem; }
 .section-title { font-size: 0.7rem; color: #94a3b8; margin: 0 0 8px 0; letter-spacing: 0.5px; }
 
 /* OVERLAYS */
@@ -120,8 +120,14 @@ button:disabled { background: #334155 !important; opacity: 0.6; cursor: not-allo
 /* PREMIUM */
 .premium-badge { background: #334155; color: #94a3b8; padding: 6px 12px; border-radius: 20px; font-size: 0.6rem; font-weight: 900; letter-spacing: 0.5px; }
 .premium-badge.is-premium { background: linear-gradient(135deg, #f59e0b, #eab308); color: #1e293b; }
+.settings-badge { background: #334155; color: #94a3b8; padding: 6px 10px; border-radius: 20px; font-size: 0.85rem; line-height: 1; }
 
 .sfide-counter { font-size: 0.7rem; color: #64748b; margin: 0 0 8px 0; font-weight: 600; }
+
+/* STATISTICHE */
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.82rem; text-align: left; }
+.stat-row span { color: #94a3b8; }
+.stat-row b { color: var(--accent); font-weight: 800; }
 
 .premium-status { text-align: center; font-size: 1.05rem; font-weight: 900; padding: 14px; border-radius: 12px; background: #1e293b; margin-bottom: 10px; }
 .premium-status.active { background: linear-gradient(135deg, #f59e0b, #eab308); color: #1e293b; }

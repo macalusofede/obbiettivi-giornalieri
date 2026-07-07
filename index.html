@@ -13,7 +13,10 @@
     <div class="app-container">
         <div class="app-header">
             <h1 class="app-title">⚡ Sfide Pro</h1>
-            <button id="btn-premium-badge" onclick="apriOverlay('overlay-premium')" class="premium-badge">STANDARD</button>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button id="btn-premium-badge" onclick="apriOverlay('overlay-premium')" class="premium-badge">STANDARD</button>
+                <button onclick="apriOverlay('overlay-impostazioni')" class="settings-badge">⚙️</button>
+            </div>
         </div>
         <div class="stats-grid">
             <div class="stat-card">
@@ -57,6 +60,7 @@
             <button onclick="apriOverlay('overlay-giochi')" class="btn-menu">🧠 GIOCHI</button>
             <button onclick="apriOverlay('overlay-agenda')" class="btn-menu">📅 AGENDA</button>
             <button onclick="apriOverlay('overlay-traguardi')" class="btn-menu">🏆 TRAGUARDI</button>
+            <button onclick="apriOverlay('overlay-statistiche')" class="btn-menu">📊 STATISTICHE</button>
         </div>
         <div class="active-section">
             <h3 class="section-title">SFIDE IN CORSO</h3>
@@ -126,6 +130,40 @@
             <p style="color:#64748b; font-size:0.7rem; margin:0 0 10px 0;">Se ne sblocca uno casuale ogni 5 livelli</p>
             <div id="obiettivi-list"></div>
             <button onclick="chiudiOverlay()" class="btn-close">CHIUDI</button>
+        </div>
+    </div>
+    <div id="overlay-statistiche" class="overlay">
+        <div class="overlay-content">
+            <h2 class="overlay-title">📊 Statistiche</h2>
+            <div id="statistiche-content"></div>
+            <button onclick="chiudiOverlay()" class="btn-close">CHIUDI</button>
+        </div>
+    </div>
+    <div id="overlay-impostazioni" class="overlay">
+        <div class="overlay-content">
+            <h2 class="overlay-title">⚙️ Impostazioni</h2>
+
+            <div class="main-card" style="text-align:left;">
+                <h3 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--accent);">🔊 Audio</h3>
+                <p style="font-size:0.75rem; color:#94a3b8; margin:0 0 12px 0;">Attiva o disattiva gli effetti sonori dell'app (click, sfide, giochi, traguardi).</p>
+                <button id="btn-toggle-suoni" onclick="toggleSuoni()" class="btn-action ok" style="width:100%;">ATTIVI 🔊</button>
+            </div>
+
+            <div class="main-card" style="text-align:left; margin-top:12px;">
+                <h3 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--accent);">💾 Backup Dati</h3>
+                <p style="font-size:0.75rem; color:#94a3b8; margin:0 0 12px 0;">Salva tutti i tuoi progressi (sfide, XP, giochi, agenda) in un file. Utile se cambi telefono o vuoi fare un backup di sicurezza.</p>
+                <button onclick="esportaDati()" class="btn-main" style="margin-bottom:10px;">⬇️ ESPORTA DATI</button>
+                <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="gestisciImportFile(this)">
+                <button onclick="document.getElementById('import-file-input').click()" class="btn-action swap" style="width:100%;">⬆️ IMPORTA DATI</button>
+            </div>
+
+            <div class="main-card" style="text-align:left; margin-top:12px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                <h3 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--danger);">⚠️ Zona Pericolosa</h3>
+                <p style="font-size:0.75rem; color:#94a3b8; margin:0 0 12px 0;">Cancella definitivamente tutti i dati salvati in questa app su questo dispositivo.</p>
+                <button onclick="confermaReset()" class="btn-close" style="width:100%; margin-top:0;">CANCELLA TUTTI I DATI</button>
+            </div>
+
+            <button onclick="chiudiOverlay()" class="btn-close" style="margin-top:15px;">CHIUDI</button>
         </div>
     </div>
     <div id="overlay-premium" class="overlay">

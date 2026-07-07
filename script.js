@@ -103,6 +103,7 @@ let state = {
     storico: JSON.parse(localStorage.getItem("pro_vF_storico")) || [0, 0, 0, 0, 0, 0, 0],
     isPremium: localStorage.getItem("pro_vF_premium") === "true",
     sfideAccettateOggi: parseInt(localStorage.getItem("pro_vF_accettate")) || 0,
+    totalePerse: parseInt(localStorage.getItem("pro_vF_perse")) || 0,
     partiteOggi: JSON.parse(localStorage.getItem("pro_vF_partite_oggi")) || { impiccato: 0, memorycarte: 0, texting: 0 }
 };
 
@@ -213,9 +214,82 @@ const frasiTexting = [
     "Il profumo del pane appena sfornato riempiva tutta la casa."
 ];
 let textingFraseCorrente = "";
-let textingInizioTempo = null;
 let textingFinito = false;
-let textingMigliorWPM = parseInt(localStorage.getItem("pro_vF_best_wpm")) || 0;
+let textingFrasiCompletate = 0;
+let textingMigliorStreak = parseInt(localStorage.getItem("pro_vF_best_texting_streak")) || 0;
+
+// ==========================================
+// SISTEMA AUDIO (suoni generati via Web Audio API, nessun file esterno)
+// ==========================================
+let audioCtx = null;
+let suoniAttivi = localStorage.getItem("pro_vF_suoni") !== "false"; // default: attivi
+
+function getAudioCtx() {
+    if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        audioCtx = new AC();
+    }
+    return audioCtx;
+}
+
+function playTone(frequenza, durata, tipo = "sine", volume = 0.15, ritardo = 0) {
+    if (!suoniAttivi) return;
+    try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === "suspended") ctx.resume();
+
+        const start = ctx.currentTime + ritardo;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = tipo;
+        osc.frequency.value = frequenza;
+        gain.gain.setValueAtTime(volume, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + durata);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + durata);
+    } catch (e) { /* Web Audio non disponibile: nessun suono, nessun crash */ }
+}
+
+function suonoClick() { playTone(600, 0.05, "sine", 0.06); }
+function suonoDing() { playTone(700, 0.09, "sine", 0.12); }
+function suonoErroreLeggero() { playTone(180, 0.12, "sawtooth", 0.08); }
+function suonoSuccesso() {
+    playTone(523.25, 0.14, "sine", 0.15, 0);
+    playTone(659.25, 0.16, "sine", 0.15, 0.1);
+    playTone(783.99, 0.2, "sine", 0.15, 0.2);
+}
+function suonoErrore() { playTone(200, 0.28, "sawtooth", 0.12); }
+function suonoLevelUp() {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, 0.16, "triangle", 0.15, i * 0.09));
+}
+function suonoAchievement() {
+    playTone(880, 0.1, "sine", 0.15, 0);
+    playTone(1108.73, 0.22, "sine", 0.15, 0.12);
+}
+
+window.toggleSuoni = () => {
+    suoniAttivi = !suoniAttivi;
+    localStorage.setItem("pro_vF_suoni", suoniAttivi);
+    renderToggleSuoni();
+    if (suoniAttivi) suonoClick();
+};
+
+function renderToggleSuoni() {
+    const btn = document.getElementById("btn-toggle-suoni");
+    if (!btn) return;
+    btn.innerText = suoniAttivi ? "ATTIVI 🔊" : "DISATTIVI 🔇";
+    btn.className = "btn-action " + (suoniAttivi ? "ok" : "swap");
+}
+
+// Click generico su ogni bottone dell'app (feedback sonoro uniforme)
+document.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (btn && !btn.disabled) suonoClick();
+});
 
 // Variabile Agenda
 let weekOffset = 0; // 0 = settimana corrente
@@ -315,8 +389,11 @@ function salvaProgressi() {
 }
 
 function guadagnaXP(quantita) {
+    const livelloPrima = calcolaLivello(progressi.xpTotale).livello;
     progressi.xpTotale += quantita;
     salvaProgressi();
+    const livelloDopo = calcolaLivello(progressi.xpTotale).livello;
+    if (livelloDopo > livelloPrima) suonoLevelUp();
     controllaAchievements();
     controllaLivelloObiettivi();
     renderLivelloBadge();
@@ -325,7 +402,7 @@ function guadagnaXP(quantita) {
 // XP dei giochi: concesso SOLO agli utenti Premium. Le sfide danno XP a tutti (vedi vinta()).
 function guadagnaXPGioco(quantita) {
     if (!state.isPremium) return;
-    guadagnaXPGioco(quantita);
+    guadagnaXP(quantita);
 }
 
 function incrementaPartite() {
@@ -353,6 +430,7 @@ function controllaAchievements() {
 }
 
 function mostraNotificaCompletamento(a) {
+    suonoAchievement();
     const toast = document.createElement("div");
     toast.className = "achievement-toast";
     toast.innerHTML = `
@@ -425,6 +503,7 @@ function sbloccaObiettivoCasuale() {
 }
 
 function mostraNotificaObiettivo(o) {
+    suonoAchievement();
     const toast = document.createElement("div");
     toast.className = "achievement-toast objective-toast";
     toast.innerHTML = `
@@ -481,6 +560,7 @@ window.completaObiettivo = (id) => {
     salvaProgressi();
     const o = obiettiviSpeciali.find(x => x.id === id);
     guadagnaXP(o ? o.xp : 30);
+    suonoAchievement();
     if (window.confetti) confetti({ particleCount: 120, spread: 80, colors: ['#a855f7', '#c084fc'] });
     renderObiettivi();
 };
@@ -510,6 +590,7 @@ function updateUI() {
     localStorage.setItem("pro_vF_usa", JSON.stringify(state.usateOggi));
     localStorage.setItem("pro_vF_storico", JSON.stringify(state.storico));
     localStorage.setItem("pro_vF_accettate", state.sfideAccettateOggi);
+    localStorage.setItem("pro_vF_perse", state.totalePerse);
     localStorage.setItem("pro_vF_partite_oggi", JSON.stringify(state.partiteOggi));
     renderAttive();
     renderChart();
@@ -651,6 +732,7 @@ window.vinta = (i) => {
     state.storico[d === 0 ? 6 : d - 1]++;
     if (sfida && sfida.taskId && sfida.dataISO) marcaTaskCompletata(sfida.dataISO, sfida.taskId, true);
     guadagnaXP(XP_VITTORIA_SFIDA);
+    suonoSuccesso();
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     updateUI();
     renderAgenda();
@@ -660,6 +742,8 @@ window.persa = (i) => {
     const sfida = state.attive[i];
     state.attive.splice(i, 1);
     state.streak = 0;
+    state.totalePerse++;
+    suonoErrore();
     if (sfida && sfida.taskId && sfida.dataISO) eliminaTaskAgenda(sfida.dataISO, sfida.taskId);
     updateUI();
     renderAgenda();
@@ -701,7 +785,7 @@ function renderPremiumOverlay() {
                 <li>✅ Giochi Premium</li>
                 <li>✅ Guadagni XP dai giochi</li>
             </ul>
-            <div class="premium-price">3,99€ <span>/mese</span></div>
+            <div class="premium-price">2,99€ <span>/mese</span></div>
             <button onclick="togglePremium()" class="btn-main">ATTIVA PREMIUM (TEST)</button>
             <p style="color:#475569; font-size:0.65rem; margin-top:10px; text-align:center;">Pulsante di prova — il pagamento reale verrà integrato in seguito.</p>
         `;
@@ -916,9 +1000,11 @@ window.verificaSudoku = () => {
         progressi.sudokuRisolti++;
         salvaProgressi();
         guadagnaXPGioco(XP_SUDOKU_RISOLTO);
+        suonoSuccesso();
         confetti({ particleCount: 150, spread: 80 });
     } else {
         feedback.innerHTML = "<h3 style='color:var(--danger); margin:10px 0;'>CI SONO ERRORI ❌</h3>";
+        suonoErrore();
     }
 };
 
@@ -963,10 +1049,12 @@ window.checkM = (s) => {
         progressi.bestMemoryLivello = Math.max(progressi.bestMemoryLivello, livelloCompletato);
         salvaProgressi();
         guadagnaXPGioco(XP_MEMORY_CORRETTO);
+        suonoSuccesso();
         memoryLivello++; 
         if(window.confetti) confetti({ particleCount: 50, spread: 40 });
     } else {
         feedback.innerHTML = `<h3 style="color:var(--danger); margin:8px 0;">SBAGLIATO! ❌</h3><p style="font-size:0.85rem; margin:0;">Era: <b>${s}</b></p>`;
+        suonoErrore();
         memoryLivello = 6; 
     }
     setTimeout(resetEChiudi, 2000);
@@ -1018,6 +1106,7 @@ window.gestisciRiflessi = (e) => {
         pad.className = "reaction-result";
         pad.innerHTML = "FALSA PARTENZA!<br><span style='font-size:1rem; font-weight:normal; margin-top:10px; display:block; color:#94a3b8;'>Tocca per riprovare</span>";
         reactionState = 'result';
+        suonoErrore();
     } 
     else if (reactionState === 'go') {
         const tempo = Date.now() - reactionStartTime;
@@ -1027,6 +1116,7 @@ window.gestisciRiflessi = (e) => {
         let extraHtml = "";
 
         guadagnaXPGioco(XP_RIFLESSI_TENTATIVO);
+        suonoDing();
 
         if (!bestReaction || tempo < bestReaction) {
             bestReaction = tempo;
@@ -1034,6 +1124,7 @@ window.gestisciRiflessi = (e) => {
             giudizio = "🚀 CLAMOROSO!";
             extraHtml = "<br><span style='color:var(--success); font-size:1rem; margin-top:5px; display:block;'>🏆 NUOVO RECORD!</span>";
             guadagnaXPGioco(XP_NUOVO_RECORD);
+            suonoLevelUp();
             if(window.confetti) confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
         } else {
             if (tempo < 250) giudizio = "🔥 FULMINE!";
@@ -1136,11 +1227,13 @@ window.checkMath = (scelta, corretta) => {
         mathScore++;
         document.getElementById("math-score").innerText = mathScore;
         guadagnaXPGioco(XP_MATH_RISPOSTA);
+        suonoDing();
         generaDomandaMath();
     } else {
         mathTimeLeft -= 2;
         if(mathTimeLeft < 0) mathTimeLeft = 0;
         document.getElementById("math-timer").innerText = mathTimeLeft;
+        suonoErrore();
         
         const q = document.getElementById("math-question");
         q.style.color = "var(--danger)";
@@ -1158,6 +1251,7 @@ window.fineMath = () => {
         localStorage.setItem("pro_vF_best_math", bestMathScore);
         extraHtml = "<br><span style='color:var(--success); font-size:1.1rem; margin-top:10px; display:block;'>🏆 NUOVO RECORD!</span>";
         guadagnaXPGioco(XP_NUOVO_RECORD);
+        suonoLevelUp();
         if(window.confetti) confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 } });
     }
     
@@ -1233,6 +1327,7 @@ window.indovinaLetteraImpiccato = (lettera) => {
     if (impiccatoParola.includes(lettera)) {
         impiccatoLettereIndovinate.push(lettera);
         guadagnaXPGioco(3);
+        suonoDing();
 
         const completo = impiccatoParola.split("").every(l => impiccatoLettereIndovinate.includes(l));
         if (completo) {
@@ -1240,11 +1335,13 @@ window.indovinaLetteraImpiccato = (lettera) => {
             impiccatoVinte++;
             localStorage.setItem("pro_vF_impiccato_vinte", impiccatoVinte);
             guadagnaXPGioco(20);
+            suonoSuccesso();
             if (window.confetti) confetti({ particleCount: 120, spread: 80 });
             feedback.innerHTML = `<h3 style="color:var(--success); margin:10px 0;">HAI VINTO! 🎉</h3><p style="font-size:0.85rem; margin:0;">Parola: <b>${impiccatoParola}</b></p>`;
         }
     } else {
         impiccatoLettereSbagliate.push(lettera);
+        suonoErrore();
         const tentativiRimasti = impiccatoTentativiMax - impiccatoLettereSbagliate.length;
         if (tentativiRimasti <= 0) {
             impiccatoFinito = true;
@@ -1324,16 +1421,19 @@ window.giraCartaMemory = (id) => {
         memoryCartePrimaScelta.trovata = true;
         memoryCarteCoppieTrovate++;
         guadagnaXPGioco(5);
+        suonoDing();
         memoryCartePrimaScelta = null;
         memoryCarteBloccato = false;
         renderMemoryCarte();
 
         if (memoryCarteCoppieTrovate === emojiMemoryCarte.length) {
             let extra = "";
+            suonoSuccesso();
             if (!memoryCarteMigliorPunteggio || memoryCarteMosse < memoryCarteMigliorPunteggio) {
                 memoryCarteMigliorPunteggio = memoryCarteMosse;
                 localStorage.setItem("pro_vF_memcarte_best", memoryCarteMigliorPunteggio);
                 guadagnaXPGioco(25);
+                suonoLevelUp();
                 extra = "<br><span style='color:var(--success);'>🏆 NUOVO RECORD!</span>";
             }
             guadagnaXPGioco(15);
@@ -1342,6 +1442,7 @@ window.giraCartaMemory = (id) => {
             feedback.innerHTML = `<h3 style="margin:10px 0;">COMPLETATO! 🏆</h3><p style="font-size:0.85rem; margin:0;">In ${memoryCarteMosse} mosse${extra}</p>`;
         }
     } else {
+        suonoErroreLeggero();
         setTimeout(() => {
             carta.girata = false;
             memoryCartePrimaScelta.girata = false;
@@ -1366,38 +1467,52 @@ window.avviaTexting = () => {
     registraPartitaStandard('texting');
     incrementaPartite();
 
-    textingFraseCorrente = frasiTexting[Math.floor(Math.random() * frasiTexting.length)];
-    textingInizioTempo = null;
+    textingFrasiCompletate = 0;
     textingFinito = false;
 
-    renderTexting();
+    nuovaFraseTexting();
 };
+
+function nuovaFraseTexting() {
+    textingFraseCorrente = frasiTexting[Math.floor(Math.random() * frasiTexting.length)];
+    renderTexting();
+}
 
 function renderTexting() {
     const c = document.getElementById("game-container");
-    const record = textingMigliorWPM > 0 ? `${textingMigliorWPM} WPM` : "--";
+    const record = textingMigliorStreak > 0 ? `${textingMigliorStreak} frasi` : "--";
 
     c.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h3 style="margin:0;">Digita Veloce</h3>
             <span style="font-size:0.8rem; color:#94a3b8;">Record: <b style="color:var(--accent);">${record}</b></span>
         </div>
-        <p style="text-align:center; color:#94a3b8; font-size:0.75rem; margin:0 0 12px 0;">Scrivi la frase più velocemente possibile, senza limiti di tempo</p>
+        <p style="text-align:center; color:#94a3b8; font-size:0.75rem; margin:0 0 6px 0;">Scrivi la frase senza sbagliare: un solo errore e la partita finisce!</p>
+        <p style="text-align:center; color:var(--success); font-size:0.85rem; margin:0 0 10px 0;">Frasi completate: <b>${textingFrasiCompletate}</b></p>
         <p id="texting-frase" style="background:var(--card); padding:14px; border-radius:12px; font-size:1rem; line-height:1.6;"></p>
-        <textarea id="texting-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Inizia a scrivere qui..." style="width:100%; min-height:90px; padding:12px; font-size:1rem; background:#0f172a; color:#fff; border:2px solid var(--accent); border-radius:10px; margin-top:12px; box-sizing:border-box; resize:none;"></textarea>
+        <input type="text" id="texting-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Inizia a scrivere qui..." style="width:100%; padding:12px; font-size:1rem; background:#0f172a; color:#fff; border:2px solid var(--accent); border-radius:10px; margin-top:12px; box-sizing:border-box;">
     `;
 
     aggiornaEvidenziazioneTexting("");
+    document.getElementById("game-feedback").innerHTML = "";
 
     const input = document.getElementById("texting-input");
     input.addEventListener("input", () => {
         if (textingFinito) return;
-        if (textingInizioTempo === null) textingInizioTempo = Date.now();
-
         const valore = input.value;
+
+        // Controllo carattere per carattere: un solo errore e la partita finisce subito
+        for (let i = 0; i < valore.length; i++) {
+            if (valore[i] !== textingFraseCorrente[i]) {
+                aggiornaEvidenziazioneTexting(valore);
+                fineTextingErrore();
+                return;
+            }
+        }
+
         aggiornaEvidenziazioneTexting(valore);
 
-        if (valore === textingFraseCorrente) completaTexting();
+        if (valore === textingFraseCorrente) completaFraseTexting();
     });
     input.focus();
 }
@@ -1419,30 +1534,48 @@ function aggiornaEvidenziazioneTexting(valore) {
     el.innerHTML = html;
 }
 
-function completaTexting() {
+function completaFraseTexting() {
     textingFinito = true;
-    const tempoImpiegato = (Date.now() - textingInizioTempo) / 1000;
-    const numeroParole = textingFraseCorrente.split(" ").length;
-    const wpm = Math.max(1, Math.round((numeroParole / tempoImpiegato) * 60));
+    textingFrasiCompletate++;
+    guadagnaXPGioco(XP_TEXTING_COMPLETATO);
+    suonoDing();
 
     let extra = "";
-    if (wpm > textingMigliorWPM) {
-        textingMigliorWPM = wpm;
-        localStorage.setItem("pro_vF_best_wpm", textingMigliorWPM);
-        extra = "<br><span style='color:var(--success);'>🏆 NUOVO RECORD!</span>";
+    if (textingFrasiCompletate > textingMigliorStreak) {
+        textingMigliorStreak = textingFrasiCompletate;
+        localStorage.setItem("pro_vF_best_texting_streak", textingMigliorStreak);
+        extra = " 🏆 Nuovo record!";
         guadagnaXPGioco(XP_NUOVO_RECORD);
-        if (window.confetti) confetti({ particleCount: 100, spread: 70 });
+        suonoLevelUp();
+        if (window.confetti) confetti({ particleCount: 60, spread: 55 });
     }
-    guadagnaXPGioco(XP_TEXTING_COMPLETATO);
 
     const input = document.getElementById("texting-input");
     if (input) input.disabled = true;
 
     const feedback = document.getElementById("game-feedback");
-    feedback.innerHTML = `
-        <h3 style="margin:10px 0;">COMPLETATO! ⌨️</h3>
-        <p style="font-size:0.9rem; margin:0;">Tempo: <b>${tempoImpiegato.toFixed(1)}s</b> — Velocità: <b style="color:var(--accent);">${wpm} WPM</b>${extra}</p>
-    `;
+    feedback.innerHTML = `<p style="color:var(--success); font-size:0.85rem; margin:10px 0;">✅ Corretto!${extra} Prossima frase...</p>`;
+
+    setTimeout(() => {
+        textingFinito = false;
+        nuovaFraseTexting();
+    }, 900);
+}
+
+function fineTextingErrore() {
+    textingFinito = true;
+    suonoErrore();
+
+    if (textingFrasiCompletate > textingMigliorStreak) {
+        textingMigliorStreak = textingFrasiCompletate;
+        localStorage.setItem("pro_vF_best_texting_streak", textingMigliorStreak);
+    }
+
+    const input = document.getElementById("texting-input");
+    if (input) input.disabled = true;
+
+    const feedback = document.getElementById("game-feedback");
+    feedback.innerHTML = `<h3 style="color:var(--danger); margin:10px 0;">ERRORE! ❌</h3><p style="font-size:0.85rem; margin:0;">Frasi completate in questa partita: <b>${textingFrasiCompletate}</b></p>`;
 }
 
 // ==========================================
@@ -1505,6 +1638,7 @@ function playSimonSequence() {
 window.simonInput = (i) => {
     if (!simonAccettaInput) return;
     if (i === simonSequence[simonUserIndex]) {
+        suonoDing();
         simonUserIndex++;
         if (simonUserIndex === simonSequence.length) {
             simonAccettaInput = false;
@@ -1513,6 +1647,7 @@ window.simonInput = (i) => {
         }
     } else {
         simonAccettaInput = false;
+        suonoErrore();
         const feedback = document.getElementById("game-feedback");
         const livelloFinale = simonLivello - 1;
         let extra = "";
@@ -1521,6 +1656,7 @@ window.simonInput = (i) => {
             localStorage.setItem("pro_vF_best_simon", bestSimon);
             extra = "<br><span style='color:var(--success);'>🏆 NUOVO RECORD!</span>";
             guadagnaXPGioco(XP_NUOVO_RECORD);
+            suonoLevelUp();
         }
         feedback.innerHTML = `<h3 style="color:var(--danger); margin:10px 0;">GAME OVER ❌</h3><p style="font-size:0.85rem; margin:0;">Livello raggiunto: ${livelloFinale}${extra}</p>`;
     }
@@ -1594,11 +1730,13 @@ window.checkAnagramma = () => {
         anagrammaScore++;
         document.getElementById("anagram-score").innerText = anagrammaScore;
         guadagnaXPGioco(XP_ANAGRAMMA_PAROLA);
+        suonoDing();
         generaAnagramma();
     } else {
         anagrammaTimeLeft -= 2;
         if (anagrammaTimeLeft < 0) anagrammaTimeLeft = 0;
         document.getElementById("anagram-timer").innerText = anagrammaTimeLeft;
+        suonoErrore();
         const w = document.getElementById("anagram-word");
         w.style.color = "var(--danger)";
         setTimeout(() => w.style.color = "var(--accent)", 200);
@@ -1614,6 +1752,7 @@ window.fineAnagramma = () => {
         localStorage.setItem("pro_vF_best_anagram", bestAnagramma);
         extraHtml = "<br><span style='color:var(--success); font-size:1.1rem; margin-top:10px; display:block;'>🏆 NUOVO RECORD!</span>";
         guadagnaXPGioco(XP_NUOVO_RECORD);
+        suonoLevelUp();
         if (window.confetti) confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 } });
     }
 
@@ -1721,6 +1860,7 @@ function haMosseDisponibili2048() {
 
 window.muovi2048 = (direzione) => {
     const prima = [...grid2048];
+    const punteggioPrima = punteggio2048;
 
     if (direzione === 'sinistra') {
         setRighe2048(getRighe2048().map(r => comprimiELinea2048(r)));
@@ -1735,6 +1875,8 @@ window.muovi2048 = (direzione) => {
     const cambiato = prima.some((v, i) => v !== grid2048[i]);
     if (!cambiato) return;
 
+    if (punteggio2048 > punteggioPrima) suonoDing();
+
     aggiungiNumero2048();
     guadagnaXPGioco(1);
 
@@ -1748,10 +1890,12 @@ window.muovi2048 = (direzione) => {
     if (!vinto2048 && grid2048.includes(2048)) {
         vinto2048 = true;
         guadagnaXPGioco(50);
+        suonoLevelUp();
         if (window.confetti) confetti({ particleCount: 150, spread: 90 });
     }
 
     if (!haMosseDisponibili2048()) {
+        suonoErrore();
         const feedback = document.getElementById("game-feedback");
         feedback.innerHTML = `<h3 style="color:var(--danger); margin:10px 0;">GAME OVER</h3><p style="font-size:0.85rem; margin:0;">Punteggio finale: ${punteggio2048}</p>`;
     }
@@ -1822,6 +1966,7 @@ function tickSnake() {
     if (testa.x === snakeCibo.x && testa.y === snakeCibo.y) {
         snakePunteggio += 10;
         guadagnaXPGioco(5);
+        suonoDing();
         const scoreEl = document.getElementById("snake-score");
         if (scoreEl) scoreEl.innerText = snakePunteggio;
         posizionaCiboSnake();
@@ -1845,11 +1990,13 @@ function disegnaSnake() {
 
 function fineSnake() {
     clearInterval(snakeInterval);
+    suonoErrore();
     let extra = "";
     if (snakePunteggio > bestSnake) {
         bestSnake = snakePunteggio;
         localStorage.setItem("pro_vF_best_snake", bestSnake);
         guadagnaXPGioco(25);
+        suonoLevelUp();
         extra = "<br><span style='color:var(--success);'>🏆 NUOVO RECORD!</span>";
         if (window.confetti) confetti({ particleCount: 100, spread: 70 });
     }
@@ -2003,6 +2150,107 @@ function renderAgenda() {
 }
 
 // ==========================================
+// 10c. PAGINA STATISTICHE
+// ==========================================
+function renderStatistiche() {
+    const cont = document.getElementById("statistiche-content");
+    if (!cont) return;
+
+    const { livello } = calcolaLivello(progressi.xpTotale);
+    const totaleSfide = state.totale + state.totalePerse;
+    const percentualeSuccesso = totaleSfide > 0 ? Math.round((state.totale / totaleSfide) * 100) : 0;
+
+    cont.innerHTML = `
+        <h3 class="section-title">🎯 SFIDE</h3>
+        <div class="stat-row"><span>Sfide vinte</span><b>${state.totale}</b></div>
+        <div class="stat-row"><span>Sfide perse</span><b>${state.totalePerse}</b></div>
+        <div class="stat-row"><span>Percentuale di successo</span><b>${totaleSfide > 0 ? percentualeSuccesso + '%' : '--'}</b></div>
+        <div class="stat-row"><span>Streak attuale</span><b>${state.streak} 🔥</b></div>
+
+        <h3 class="section-title" style="margin-top:18px;">⭐ LIVELLO</h3>
+        <div class="stat-row"><span>Livello attuale</span><b>${livello}</b></div>
+        <div class="stat-row"><span>XP totali guadagnati</span><b>${progressi.xpTotale}</b></div>
+
+        <h3 class="section-title" style="margin-top:18px;">🏆 TRAGUARDI</h3>
+        <div class="stat-row"><span>Achievement completati</span><b>${progressi.achievementCompletati.length}/${achievements.length}</b></div>
+        <div class="stat-row"><span>Obiettivi speciali completati</span><b>${progressi.obiettiviCompletati.length}/${obiettiviSpeciali.length}</b></div>
+
+        <h3 class="section-title" style="margin-top:18px;">🎮 GIOCHI</h3>
+        <div class="stat-row"><span>Partite giocate in totale</span><b>${progressi.partiteGiocate}</b></div>
+        <div class="stat-row"><span>Sudoku risolti</span><b>${progressi.sudokuRisolti}</b></div>
+        <div class="stat-row"><span>Miglior livello Memory Numbers</span><b>${progressi.bestMemoryLivello > 0 ? progressi.bestMemoryLivello : '--'}</b></div>
+        <div class="stat-row"><span>Record Test Riflessi</span><b>${bestReaction ? bestReaction + ' ms' : '--'}</b></div>
+        <div class="stat-row"><span>Record Calcolo Rapido</span><b>${bestMathScore > 0 ? bestMathScore : '--'}</b></div>
+        <div class="stat-row"><span>Impiccato — parole vinte</span><b>${impiccatoVinte}</b></div>
+        <div class="stat-row"><span>Miglior Memory Carte</span><b>${memoryCarteMigliorPunteggio ? memoryCarteMigliorPunteggio + ' mosse' : '--'}</b></div>
+        <div class="stat-row"><span>Miglior livello Simon Colori</span><b>${bestSimon > 0 ? bestSimon : '--'}</b></div>
+        <div class="stat-row"><span>Record Anagramma Lampo</span><b>${bestAnagramma > 0 ? bestAnagramma : '--'}</b></div>
+        <div class="stat-row"><span>Record 2048</span><b>${best2048 > 0 ? best2048 : '--'}</b></div>
+        <div class="stat-row"><span>Record Snake</span><b>${bestSnake > 0 ? bestSnake : '--'}</b></div>
+        <div class="stat-row"><span>Miglior streak Digita Veloce</span><b>${textingMigliorStreak > 0 ? textingMigliorStreak + ' frasi' : '--'}</b></div>
+    `;
+}
+
+// ==========================================
+// 10b. BACKUP DATI: ESPORTA / IMPORTA / RESET
+// ==========================================
+function chiaviDatiApp() {
+    const chiavi = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith("pro_vF_") || key.startsWith("agenda_giorno_")) {
+            chiavi.push(key);
+        }
+    }
+    return chiavi;
+}
+
+window.esportaDati = () => {
+    const dati = {};
+    chiaviDatiApp().forEach(key => { dati[key] = localStorage.getItem(key); });
+
+    const blob = new Blob([JSON.stringify(dati, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const oggi = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `sfide-pro-backup-${oggi}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+};
+
+window.gestisciImportFile = (input) => {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const dati = JSON.parse(e.target.result);
+            Object.keys(dati).forEach(key => {
+                if (key.startsWith("pro_vF_") || key.startsWith("agenda_giorno_")) {
+                    localStorage.setItem(key, dati[key]);
+                }
+            });
+            alert("Dati importati con successo! L'app si ricaricherà ora.");
+            location.reload();
+        } catch (err) {
+            alert("File non valido. Assicurati di selezionare un backup esportato da questa app.");
+        }
+    };
+    reader.readAsText(input.files[0]);
+    input.value = ""; // permette di reimportare lo stesso file più volte se serve
+};
+
+window.confermaReset = () => {
+    const conferma = confirm("Sei sicuro di voler cancellare TUTTI i dati dell'app? Questa azione è irreversibile.\n\nTi consigliamo di esportare prima un backup.");
+    if (!conferma) return;
+
+    chiaviDatiApp().forEach(key => localStorage.removeItem(key));
+    location.reload();
+};
+
+// ==========================================
 // 11. UTILITY & OVERLAYS
 // ==========================================
 window.apriOverlay = (id) => {
@@ -2012,6 +2260,8 @@ window.apriOverlay = (id) => {
     if (id === 'overlay-agenda') renderAgenda();
     if (id === 'overlay-premium') renderPremiumOverlay();
     if (id === 'overlay-traguardi') { renderLivelloBadge(); renderTraguardi(); renderObiettivi(); }
+    if (id === 'overlay-statistiche') renderStatistiche();
+    if (id === 'overlay-impostazioni') renderToggleSuoni();
 };
 window.chiudiOverlay = () => { document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none'); document.body.style.overflow = "auto"; };
 window.resetEChiudi = () => { 
@@ -2030,6 +2280,7 @@ window.onload = () => {
     updateUI();
     controllaAchievements();
     controllaLivelloObiettivi();
+    renderToggleSuoni();
     setTimeout(() => {
         const splash = document.getElementById("splash-screen");
         if (splash) splash.classList.add("hidden-splash");
